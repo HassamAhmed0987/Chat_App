@@ -120,6 +120,84 @@ export const configureSocket = (io) => {
       }
     });
 
+    socket.on("mark_messages_read", async (payload, callback) => {
+      try {
+        const { senderId } = payload || {};
+
+        if (
+          !senderId ||
+          !mongoose.isValidObjectId(senderId)
+        ) {
+          return callback?.({
+            success: false,
+            message: "Invalid sender ID"
+          });
+        }
+
+        const receiverId = socket.user._id;
+
+        if (senderId.toString() === receiverId.toString()) {
+          return callback?.({
+            success: false,
+            message: "Invalid conversation"
+          });
+        }
+
+        const filter = {
+          sender: senderId,
+          receiver: receiverId,
+          isRead: false
+        };
+
+        // Unread messages find karo
+        const unreadMessages = await Message.find(filter)
+          .select("_id");
+
+        if (unreadMessages.length === 0) {
+          return callback?.({
+            success: true,
+            message: "No unread messages"
+          });
+        }
+
+        const readAt = new Date();
+
+        // Database mein read status update karo
+        await Message.updateMany(filter, {
+          $set: {
+            isRead: true,
+            readAt
+          }
+        });
+
+        const messageIds = unreadMessages.map(
+          message => message._id
+        );
+
+        // Original sender ko read receipt bhejo
+        io.to(`user:${senderId}`).emit("messages_read", {
+          readerId: receiverId.toString(),
+          messageIds,
+          readAt
+        });
+
+        return callback?.({
+          success: true,
+          count: messageIds.length,
+          messageIds,
+          readAt
+        });
+      } catch (error) {
+        console.error("Read message error:", error.message);
+
+        return callback?.({
+          success: false,
+          message: "Failed to mark messages as read"
+        });
+      }
+    });
+
+
     socket.on("disconnect", () => {
       console.log(`${socket.user.name} disconnected`);
     });
