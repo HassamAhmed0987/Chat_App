@@ -59,6 +59,8 @@ export const getConversation = async (req, res) => {
 
 export const sendMessage = async (req, res) => {
     try {
+        console.log(req.body);
+        
         const { receiverId, text } = req.body;
         const senderId = req.user._id;
 

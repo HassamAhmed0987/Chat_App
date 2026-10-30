@@ -6,18 +6,9 @@ import {
   LogOut,
   Settings,
 } from "lucide-react";
+
+import { useQuery } from "@tanstack/react-query";
 import { getAllUsers } from "../api/users.Api";
-
-const demoUsers = [
-  { _id: "1", name: "Ali Ahmed", email: "ali@example.com" },
-  { _id: "2", name: "Ahmed Khan", email: "ahmed@example.com" },
-  { _id: "3", name: "Sara Ali", email: "sara@example.com" },
-];
-
-const users = getAllUsers()
-
-console.log(users);
-
 
 export default function Sidebar({
   selectedUser,
@@ -26,13 +17,29 @@ export default function Sidebar({
   onOpenProfile,
   onLogout,
 }) {
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["users"],
+    queryFn: getAllUsers,
+    enabled: !!currentUser,
+  });
+
+  const users = data?.data || [];
+
   return (
     <aside className="sidebar">
+
       <header className="sidebar-header">
         <div className="brand">
           <div className="brand-icon">
             <MessageCircle size={23} />
           </div>
+
           <div>
             <h2>Chat App</h2>
             <p>Real-time messaging</p>
@@ -48,7 +55,19 @@ export default function Sidebar({
       <div className="user-list">
         <div className="section-label">CHATS</div>
 
-        {demoUsers.map((user) => (
+        {isLoading && <p>Loading users...</p>}
+
+        {isError && (
+          <p className="error-message">
+            {error.message || "Failed to load users"}
+          </p>
+        )}
+
+        {!isLoading && !isError && users.length === 0 && (
+          <p>No users found</p>
+        )}
+
+        {users.map((user) => (
           <button
             key={user._id}
             className={`user-item ${
@@ -98,6 +117,7 @@ export default function Sidebar({
           </button>
         </div>
       </footer>
+
     </aside>
   );
 }
